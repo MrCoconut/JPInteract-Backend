@@ -1,9 +1,0 @@
-@import "vars.css";
-
-body{
-  background-color: var(--color-darkred);
-}
-
-h2{
-  margin-top: 80px;
-}
