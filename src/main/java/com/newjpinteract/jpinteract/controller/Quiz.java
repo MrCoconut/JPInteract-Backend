@@ -1,7 +1,6 @@
 package com.newjpinteract.jpinteract.controller;
 
-import com.newjpinteract.jpinteract.repositories.QuizOperation;
-import com.newjpinteract.jpinteract.repositories.QuizRepository;
+import com.newjpinteract.jpinteract.repositories.*;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -11,12 +10,21 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Vector;
 
 @RestController
 public class Quiz {
     @Autowired
     private QuizRepository repository;
+
+    @Autowired
+    private TeacherOperation teacherOperation;
+
+    @Autowired
+    private CountOperation countOperation;
 
     @Autowired
     private QuizOperation operation;
@@ -46,6 +54,37 @@ public class Quiz {
         String json = incomePost.getBody();
         JSONObject update = new JSONObject(json);
         operation.quizUpdate(update,quizID);
+        JSONObject response = new JSONObject();
+        response.put("result",200);
+        return response.toString();
+    }
+
+    @RequestMapping(value = "/quiz", method = RequestMethod.PUT)
+    public String quizPut(HttpEntity<String> incomePost) {
+        JSONObject json = new JSONObject(incomePost.getBody());
+        com.newjpinteract.jpinteract.repositories.Quiz newQuiz = new com.newjpinteract.jpinteract.repositories.Quiz();
+        newQuiz.setName(json.getString("name"));
+        newQuiz.setQuestions(new HashMap<String, String>());
+        json.getJSONObject("questions").keySet().forEach(num->{
+            JSONObject question = json.getJSONObject("questions").getJSONObject(num);
+            if (question.getString("type").equals("MUL")){
+                HashMap<String, Integer> optionCounts = new HashMap<String, Integer>();
+                optionCounts.put("A",0);
+                optionCounts.put("B",0);
+                optionCounts.put("C",0);
+                optionCounts.put("D",0);
+                question.put("optionCounts",optionCounts);
+            }else if(question.getString("type").equals("SHT")){
+                Vector<String> answers = new Vector<String>();
+                question.put("answers",answers);
+            }
+            newQuiz.getQuestions().put(num, question.toString());
+        });
+        newQuiz.setAttempt(0);
+        int count = countOperation.retrieveCount();
+        newQuiz.setQuizID(count);
+        repository.save(newQuiz);
+        teacherOperation.addQuizToTeacher(json.getString("teacher"), Integer.toString(count));
         JSONObject response = new JSONObject();
         response.put("result",200);
         return response.toString();
